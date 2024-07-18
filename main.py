@@ -18,20 +18,30 @@ background = pygame.image.load('screen_back.jpg').convert()
 apple_image = pygame.image.load('apple.png').convert_alpha()
 # create
 # snake
-class SnakeSegment(pygame.sprite.Sprite):
+class SnakeHead(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__()     
-        self.image =  pygame.Surface([15, 15])
+        super().__init__()
+        self.image = pygame.Surface([15, 15])
+        self.image.fill((0, 0, 255))  # Cor azul para a cabeça
+
+        # Desenha os olhos (pequenos círculos brancos)
+        pygame.draw.circle(self.image, (0,0,0), (4, 4), 2)  # Olho esquerdo
+        pygame.draw.circle(self.image, (0,0,0), (10, 4), 2)  # Olho direito
+        
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+class SnakeBody(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pygame.Surface([15, 15])
         self.image.fill((0, 0, 255))  # Cor azul para o corpo
 
         # Desenha a rajada em tons de azul
-        pygame.draw.line(self.image, (0, 0, 200), (0, 0), (15, 15), 2)
-        pygame.draw.line(self.image, (0, 0, 220), (0, 15), (15, 0), 2)
+        pygame.draw.line(self.image, (0, 0, 200), (0, 0), (15, 15), 6)
+        pygame.draw.line(self.image, (0, 55, 255), (3, 3), (10, 10), 2)
         
-        # Desenha os olhos (pequenos círculos brancos)
-        pygame.draw.circle(self.image, (0,0,0), (4, 4), 1)  # Olho esquerdo
-        pygame.draw.circle(self.image, (0,0,0), (10, 4), 1)  # Olho direito
-        self.rect = self.image.get_rect(topleft=(x,y))
+        self.rect = self.image.get_rect(topleft=(x, y))
+
 
 # food
 class Food(pygame.sprite.Sprite):
@@ -69,8 +79,13 @@ wall_segment.add(left_wall, right_wall, uper_wall, down_wall)
 snake_segments = pygame.sprite.Group() #grupo de sprites
 # criar uma pos inicial, iterar sobre ela, e adicionar um segmento
 initial_pos = [pygame.Vector2(100, 50), pygame.Vector2(85, 50), pygame.Vector2(70, 50)]
+
+head_segment = SnakeHead(initial_pos[0].x, initial_pos[0].y)
+snake_segments.add(head_segment)
+head = head_segment
+
 for pos in initial_pos:
-    segment = SnakeSegment(pos.x, pos.y)
+    segment = SnakeBody(pos.x, pos.y)
     snake_segments.add(segment)
 head = snake_segments.sprites()[0] #a cobra sempre vai ser o index 0 no grupo de sprites
 
@@ -98,10 +113,15 @@ while running:
     if keys[pygame.K_d] and direction.x == 0:
         direction = pygame.Vector2(15, 0)
     
-    # testar e explicar o funcionamento
+#a cada frame cria uma nova posição pra cabeca da cobra e atualiza o corpo em relaçao a cabeça
     new_head_pos = pygame.Vector2(head.rect.topleft) + direction
-    new_head = SnakeSegment(new_head_pos[0], new_head_pos[1])
+    new_head = SnakeHead(new_head_pos[0], new_head_pos[1])
     snake_segments.add(new_head)
+#pega a referencia da cabeça no frame antrior, atribui a uma nova variavel, modifica a cabeça pra ser corpo agora e atualiza
+    old_head = head
+    old_head.__class__ = SnakeBody  # Muda a classe do antigo head para SnakeBody
+    old_head.image = SnakeBody(old_head.rect.x, old_head.rect.y).image  # Atualiza a imagem para a do corpo
+#adiciona cabeça e corpo no grupo que forma a cobra
     snake_segments = pygame.sprite.Group(new_head, *snake_segments)
     head = new_head
     
@@ -123,7 +143,7 @@ while running:
         snake_segments.remove(tail)
         
     
-    # fill the screen with a color to wipe away anything from last frame
+    #desenha na tela 
     screen.blit(background, (0,0))
     snake_segments.draw(screen)
     food_group.draw(screen)
