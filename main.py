@@ -6,9 +6,6 @@ from pygame.sprite import Group
 def check_colision(head_pos, snake_segment, width, height):
     if head_pos <= 0 or head_pos > width-10 or head_pos > height-10 :
         return True 
-    for block in snake_segment[1:]:
-        if head_pos == block:
-            return True
 
 # pygame setup
 pygame.init()
@@ -25,7 +22,15 @@ class SnakeSegment(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()     
         self.image =  pygame.Surface([15, 15])
-        self.image.fill('green')
+        self.image.fill((0, 0, 255))  # Cor azul para o corpo
+
+        # Desenha a rajada em tons de azul
+        pygame.draw.line(self.image, (0, 0, 200), (0, 0), (15, 15), 2)
+        pygame.draw.line(self.image, (0, 0, 220), (0, 15), (15, 0), 2)
+        
+        # Desenha os olhos (pequenos círculos brancos)
+        pygame.draw.circle(self.image, (0,0,0), (4, 4), 1)  # Olho esquerdo
+        pygame.draw.circle(self.image, (0,0,0), (10, 4), 1)  # Olho direito
         self.rect = self.image.get_rect(topleft=(x,y))
 
 # food
@@ -36,18 +41,41 @@ class Food(pygame.sprite.Sprite):
         self.image.fill('red')
         self.rect = self.image.get_rect(topleft=(x,y))
     def relocate(self):
-        self.rect.topleft = (random.randrange(10, screen.get_width()-10), random.randrange(10, screen.get_height()-10))
+        self.rect.topleft = (random.randrange(20, screen.get_width()-20), random.randrange(20, screen.get_height()-20))
+
+class WallVertical(pygame.sprite.Sprite):
+    def __init__(self, x ,y) :
+        super().__init__()
+        self.image = pygame.Surface([1, 512])
+        self.image.fill('blue') #da uma cor ao sprite
+        self.image.set_colorkey('blue') #usa essa cor de referencia pra sumir o sprite
+        self.rect = self.image.get_rect(topleft=(x,y))
+
+class WallHorizontal(pygame.sprite.Sprite):
+    def __init__(self, x ,y) :
+        super().__init__()
+        self.image = pygame.Surface([512, 1])
+        self.image.fill('blue')
+        self.image.set_colorkey('blue')
+        self.rect = self.image.get_rect(topleft=(x,y))
+
+wall_segment = pygame.sprite.Group()
+left_wall = WallVertical(17, 0)
+right_wall = WallVertical(495,0)
+uper_wall = WallHorizontal(0, 17)
+down_wall = WallHorizontal(0, 495)
+wall_segment.add(left_wall, right_wall, uper_wall, down_wall)
 
 snake_segments = pygame.sprite.Group() #grupo de sprites
 # criar uma pos inicial, iterar sobre ela, e adicionar um segmento
-initial_pos = [pygame.Vector2(100, 50), pygame.Vector2(90, 50), pygame.Vector2(80, 50)]
+initial_pos = [pygame.Vector2(100, 50), pygame.Vector2(85, 50), pygame.Vector2(70, 50)]
 for pos in initial_pos:
     segment = SnakeSegment(pos.x, pos.y)
     snake_segments.add(segment)
 head = snake_segments.sprites()[0] #a cobra sempre vai ser o index 0 no grupo de sprites
 
 # pos init food
-food = Food(random.randrange(10, screen.get_width()-10), random.randrange(10, screen.get_height()-10))
+food = Food(random.randrange(20, screen.get_width()-20), random.randrange(20, screen.get_height()-20))
 food_group = pygame.sprite.GroupSingle(food)
 
 direction = pygame.Vector2(10, 0)
@@ -62,19 +90,14 @@ while running:
     
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w] and direction.y == 0:
-        direction = pygame.Vector2(0, -10)
+        direction = pygame.Vector2(0, -15)
     if keys[pygame.K_s] and direction.y == 0:
-        direction = pygame.Vector2(0, 10)
+        direction = pygame.Vector2(0, 15)
     if keys[pygame.K_a] and direction.x == 0:
-        direction = pygame.Vector2(-10, 0)
+        direction = pygame.Vector2(-15, 0)
     if keys[pygame.K_d] and direction.x == 0:
-        direction = pygame.Vector2(10, 0)
+        direction = pygame.Vector2(15, 0)
     
-
-    #colision check    
-    # if check_colision(snake_pos, snake_body, 512, 512):
-    #     running = False
-
     # testar e explicar o funcionamento
     new_head_pos = pygame.Vector2(head.rect.topleft) + direction
     new_head = SnakeSegment(new_head_pos[0], new_head_pos[1])
@@ -83,7 +106,14 @@ while running:
     head = new_head
     
     #check colision border
-    #check_colision(head, snake_segments, screen.get_width, screen.get_height)
+    if pygame.sprite.spritecollideany(head, wall_segment):
+        running = False
+
+    #check colision self
+    snake_body =  pygame.sprite.Group(snake_segments.sprites()[3:])
+    if pygame.sprite.spritecollide(head, snake_body, True):
+        print("cabeça")
+        
 
     # check colision w/ apple
     if pygame.sprite.spritecollideany(head, food_group):
@@ -97,9 +127,10 @@ while running:
     screen.blit(background, (0,0))
     snake_segments.draw(screen)
     food_group.draw(screen)
+    wall_segment.draw(screen)
     pygame.display.flip()
 
     # game speed
-    clock.tick(10)
+    clock.tick(9)
 
 pygame.quit()
